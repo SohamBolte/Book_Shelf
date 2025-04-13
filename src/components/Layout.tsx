@@ -1,13 +1,16 @@
 
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useBookExchange } from "../context/BookExchangeContext";
-import { BookOpen, LogIn, LogOut, User, PlusCircle, Library, Search } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { BookOpen, LogIn, LogOut, User, PlusCircle, Library, Search, MessageCircle } from "lucide-react";
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { currentUser, logoutUser } = useBookExchange();
+  const { currentUser, logoutUser, getUnreadMessagesCount } = useBookExchange();
   const navigate = useNavigate();
+  const location = useLocation();
+  const unreadCount = currentUser ? getUnreadMessagesCount() : 0;
 
   const handleLogout = () => {
     logoutUser();
@@ -24,14 +27,22 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               <Link to="/" className="font-serif text-2xl font-bold text-book-brown">SharedShelf</Link>
             </div>
             <nav className="hidden md:flex space-x-6">
-              <Link to="/" className="text-book-charcoal hover:text-book-brown font-medium">Home</Link>
-              <Link to="/browse" className="text-book-charcoal hover:text-book-brown font-medium">Browse Books</Link>
+              <Link to="/" className={`text-book-charcoal hover:text-book-brown font-medium ${location.pathname === '/' ? 'text-book-brown' : ''}`}>Home</Link>
+              <Link to="/browse" className={`text-book-charcoal hover:text-book-brown font-medium ${location.pathname === '/browse' ? 'text-book-brown' : ''}`}>Browse Books</Link>
               {currentUser && (
                 <>
                   {currentUser.role === "owner" && (
-                    <Link to="/add-book" className="text-book-charcoal hover:text-book-brown font-medium">Add Book</Link>
+                    <Link to="/add-book" className={`text-book-charcoal hover:text-book-brown font-medium ${location.pathname === '/add-book' ? 'text-book-brown' : ''}`}>Add Book</Link>
                   )}
-                  <Link to="/profile" className="text-book-charcoal hover:text-book-brown font-medium">My Profile</Link>
+                  <Link to="/messages" className={`text-book-charcoal hover:text-book-brown font-medium relative ${location.pathname === '/messages' ? 'text-book-brown' : ''}`}>
+                    Messages
+                    {unreadCount > 0 && (
+                      <Badge className="ml-1 bg-book-brown absolute -top-2 -right-4 w-5 h-5 flex items-center justify-center p-0 text-xs">
+                        {unreadCount}
+                      </Badge>
+                    )}
+                  </Link>
+                  <Link to="/profile" className={`text-book-charcoal hover:text-book-brown font-medium ${location.pathname === '/profile' ? 'text-book-brown' : ''}`}>My Profile</Link>
                 </>
               )}
             </nav>
@@ -89,6 +100,17 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <Search className="h-6 w-6" />
             <span>Browse</span>
           </Link>
+          {currentUser && (
+            <Link to="/messages" className="flex flex-col items-center text-xs text-book-charcoal relative">
+              <MessageCircle className="h-6 w-6" />
+              <span>Messages</span>
+              {unreadCount > 0 && (
+                <Badge className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center p-0 text-xs bg-book-brown">
+                  {unreadCount}
+                </Badge>
+              )}
+            </Link>
+          )}
           {currentUser && currentUser.role === "owner" && (
             <Link to="/add-book" className="flex flex-col items-center text-xs text-book-charcoal">
               <PlusCircle className="h-6 w-6" />

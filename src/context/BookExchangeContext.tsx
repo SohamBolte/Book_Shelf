@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { toast } from "../hooks/use-toast";
 
@@ -27,9 +26,23 @@ export interface Book {
   createdAt: string;
 }
 
+export interface Message {
+  id: string;
+  senderId: string;
+  senderName: string;
+  receiverId: string;
+  bookId: string;
+  bookTitle: string;
+  content: string;
+  isRequest: boolean;
+  isRead: boolean;
+  createdAt: string;
+}
+
 interface BookExchangeContextType {
   users: User[];
   books: Book[];
+  messages: Message[];
   currentUser: User | null;
   registerUser: (user: Omit<User, "id">) => void;
   loginUser: (email: string, password: string) => boolean;
@@ -38,6 +51,10 @@ interface BookExchangeContextType {
   toggleBookAvailability: (bookId: string) => void;
   deleteBook: (bookId: string) => void;
   filterBooksBySearch: (search: string) => Book[];
+  sendMessage: (receiverId: string, bookId: string, content: string, isRequest: boolean) => void;
+  getMessagesForUser: () => Message[];
+  markMessageAsRead: (messageId: string) => void;
+  getUnreadMessagesCount: () => number;
 }
 
 const BookExchangeContext = createContext<BookExchangeContextType | undefined>(undefined);
@@ -91,6 +108,8 @@ const initialBooks: Book[] = [
   },
 ];
 
+const initialMessages: Message[] = [];
+
 export const BookExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Try to load data from localStorage if available
   const [users, setUsers] = useState<User[]>(() => {
@@ -103,6 +122,11 @@ export const BookExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return savedBooks ? JSON.parse(savedBooks) : initialBooks;
   });
   
+  const [messages, setMessages] = useState<Message[]>(() => {
+    const savedMessages = localStorage.getItem("bookExchangeMessages");
+    return savedMessages ? JSON.parse(savedMessages) : initialMessages;
+  });
+  
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const savedUser = localStorage.getItem("bookExchangeCurrentUser");
     return savedUser ? JSON.parse(savedUser) : null;
@@ -112,8 +136,9 @@ export const BookExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ 
   useEffect(() => {
     localStorage.setItem("bookExchangeUsers", JSON.stringify(users));
     localStorage.setItem("bookExchangeBooks", JSON.stringify(books));
+    localStorage.setItem("bookExchangeMessages", JSON.stringify(messages));
     localStorage.setItem("bookExchangeCurrentUser", currentUser ? JSON.stringify(currentUser) : "");
-  }, [users, books, currentUser]);
+  }, [users, books, messages, currentUser]);
 
   const registerUser = (userData: Omit<User, "id">) => {
     // Check if user with this email already exists
@@ -260,11 +285,81 @@ export const BookExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ 
     );
   };
 
+  const sendMessage = (receiverId: string, bookId: string, content: string, isRequest: boolean) => {
+    if (!currentUser) {
+      toast({
+        title: "Not authorized",
+        description: "You must be logged in to send messages",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const book = books.find(b => b.id === bookId);
+    if (!book) {
+      toast({
+        title: "Error",
+        description: "Book not found",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const newMessage: Message = {
+      id: Date.now().toString(),
+      senderId: currentUser.id,
+      senderName: currentUser.name,
+      receiverId,
+      bookId,
+      bookTitle: book.title,
+      content,
+      isRequest,
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    setMessages(prevMessages => [...prevMessages, newMessage]);
+    
+    toast({
+      title: isRequest ? "Book Request Sent" : "Message Sent",
+      description: `Your ${isRequest ? "request" : "message"} has been sent to the book owner`,
+    });
+  };
+
+  const getMessagesForUser = () => {
+    if (!currentUser) return [];
+    
+    return messages.filter(message => 
+      message.senderId === currentUser.id || message.receiverId === currentUser.id
+    ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  };
+
+  const markMessageAsRead = (messageId: string) => {
+    if (!currentUser) return;
+    
+    setMessages(prevMessages => 
+      prevMessages.map(message => 
+        message.id === messageId && message.receiverId === currentUser.id
+          ? { ...message, isRead: true }
+          : message
+      )
+    );
+  };
+
+  const getUnreadMessagesCount = () => {
+    if (!currentUser) return 0;
+    
+    return messages.filter(message => 
+      message.receiverId === currentUser.id && !message.isRead
+    ).length;
+  };
+
   return (
     <BookExchangeContext.Provider
       value={{
         users,
         books,
+        messages,
         currentUser,
         registerUser,
         loginUser,
@@ -273,6 +368,10 @@ export const BookExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ 
         toggleBookAvailability,
         deleteBook,
         filterBooksBySearch,
+        sendMessage,
+        getMessagesForUser,
+        markMessageAsRead,
+        getUnreadMessagesCount,
       }}
     >
       {children}
