@@ -62,7 +62,17 @@ const AddBook = () => {
   }, [currentUser, navigate]);
 
   const onSubmit = (values: BookFormValues) => {
-    addBook(values);
+    // Ensure required fields are present
+    const bookData = {
+      title: values.title,
+      author: values.author,
+      genre: values.genre || undefined,
+      location: values.location,
+      contact: values.contact,
+      coverUrl: values.coverUrl || undefined,
+    };
+    
+    addBook(bookData);
     navigate("/profile");
   };
 

@@ -42,8 +42,19 @@ const Register = () => {
   });
 
   const onSubmit = (values: RegisterFormValues) => {
+    // Ensure we're passing non-optional values matching the expected type
     const { confirmPassword, ...userData } = values;
-    registerUser(userData);
+    
+    // Create a user object with required properties
+    const userToRegister = {
+      name: userData.name,
+      email: userData.email,
+      password: userData.password,
+      phone: userData.phone,
+      role: userData.role
+    };
+    
+    registerUser(userToRegister);
     navigate("/profile");
   };
 
