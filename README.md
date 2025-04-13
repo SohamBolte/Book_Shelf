@@ -41,6 +41,12 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
+AI tools:
+
+- Deepseek
+- Lovable AI
+- ChatGPT
+
 ## How to see my deployed project?
 
 Simply open [Vercel Domain](https://book-shelf-rosy.vercel.app/)
