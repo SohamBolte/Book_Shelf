@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import Layout from "../components/Layout";
 import { useBookExchange } from "../context/BookExchangeContext";
 import { toast } from "../hooks/use-toast";
+import { BookOpen, Upload, X } from "lucide-react";
 
 const bookSchema = z.object({
   title: z.string().min(1, { message: "Title is required" }),
@@ -26,6 +27,9 @@ type BookFormValues = z.infer<typeof bookSchema>;
 const AddBook = () => {
   const { addBook, currentUser } = useBookExchange();
   const navigate = useNavigate();
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<BookFormValues>({
     resolver: zodResolver(bookSchema),
@@ -61,6 +65,30 @@ const AddBook = () => {
     }
   }, [currentUser, navigate]);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setCoverFile(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target && typeof event.target.result === 'string') {
+          setPreviewUrl(event.target.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const clearCoverImage = () => {
+    setCoverFile(null);
+    setPreviewUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const onSubmit = (values: BookFormValues) => {
     // Ensure required fields are present
     const bookData = {
@@ -72,7 +100,7 @@ const AddBook = () => {
       coverUrl: values.coverUrl || undefined,
     };
     
-    addBook(bookData);
+    addBook(bookData, coverFile || undefined);
     navigate("/profile");
   };
 
@@ -162,26 +190,76 @@ const AddBook = () => {
                 )}
               />
               
-              <FormField
-                control={form.control}
-                name="coverUrl"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Book Cover Image URL (Optional)</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="https://example.com/book-cover.jpg" 
-                        {...field} 
+              <div className="space-y-3">
+                <FormLabel>Book Cover</FormLabel>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="relative mt-2 mb-4">
+                      <Input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="sr-only"
+                        id="cover-upload"
                       />
-                    </FormControl>
-                    <FormMessage />
-                    <p className="text-xs text-muted-foreground">
-                      Enter a URL for the book cover image. You can use image hosting services 
-                      like Unsplash or Imgur.
-                    </p>
-                  </FormItem>
-                )}
-              />
+                      <label
+                        htmlFor="cover-upload"
+                        className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-md cursor-pointer border-muted-foreground/25 hover:border-muted-foreground/50"
+                      >
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                          <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
+                          <p className="mb-2 text-sm text-muted-foreground">Click to upload</p>
+                        </div>
+                      </label>
+                    </div>
+                    
+                    <FormField
+                      control={form.control}
+                      name="coverUrl"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Or enter image URL (Optional)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="https://example.com/book-cover.jpg" 
+                              {...field} 
+                              disabled={!!coverFile}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <div>
+                    <p className="mb-2 text-sm font-medium">Preview</p>
+                    <div className="relative aspect-[3/4] bg-muted rounded-md overflow-hidden">
+                      {previewUrl ? (
+                        <>
+                          <img 
+                            src={previewUrl} 
+                            alt="Cover preview" 
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={clearCoverImage}
+                            className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <BookOpen className="h-12 w-12 text-muted-foreground/50" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
               
               <div className="flex justify-end space-x-4 pt-4">
                 <Button 

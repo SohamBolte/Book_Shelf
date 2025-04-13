@@ -79,10 +79,10 @@ const BrowseBooks = () => {
         </div>
 
         {filteredBooks.length > 0 ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {filteredBooks.map((book) => (
-              <Card key={book.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                <div className="book-cover">
+              <Card key={book.id} className="overflow-hidden hover:shadow-md transition-shadow h-full flex flex-col">
+                <div className="book-cover aspect-[3/4]">
                   {book.coverUrl ? (
                     <img 
                       src={book.coverUrl} 
@@ -90,26 +90,28 @@ const BrowseBooks = () => {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <BookOpen className="h-12 w-12 text-book-brown/40" />
+                    <div className="w-full h-full flex items-center justify-center bg-book-brown/10">
+                      <BookOpen className="h-12 w-12 text-book-brown/60" />
+                    </div>
                   )}
                 </div>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg font-semibold">{book.title}</CardTitle>
-                  <CardDescription>by {book.author}</CardDescription>
+                <CardHeader className="pb-2 pt-3 px-3">
+                  <CardTitle className="text-base font-semibold line-clamp-1">{book.title}</CardTitle>
+                  <CardDescription className="text-xs line-clamp-1">by {book.author}</CardDescription>
                 </CardHeader>
-                <CardContent className="pb-2">
-                  <div className="flex items-center text-sm text-muted-foreground mb-2">
-                    <MapPin className="mr-1 h-4 w-4" />
+                <CardContent className="pb-2 px-3 text-xs">
+                  <div className="flex items-center text-xs text-muted-foreground mb-1">
+                    <MapPin className="mr-1 h-3 w-3" />
                     {book.location}
                   </div>
                   {book.genre && (
-                    <div className="inline-block bg-muted text-xs px-2 py-1 rounded-full">
+                    <div className="inline-block bg-muted text-xs px-2 py-0.5 rounded-full">
                       {book.genre}
                     </div>
                   )}
                 </CardContent>
-                <CardFooter className="pt-2 flex justify-between items-center">
-                  <span className={`text-xs px-2 py-1 rounded-full ${
+                <CardFooter className="pt-2 flex justify-between items-center mt-auto px-3 pb-3">
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
                     book.available 
                       ? "bg-green-100 text-green-800" 
                       : "bg-red-100 text-red-800"
@@ -118,10 +120,11 @@ const BrowseBooks = () => {
                   </span>
                   <Button 
                     variant="outline" 
-                    className="text-book-brown border-book-brown/50 hover:border-book-brown hover:bg-book-brown/5"
+                    size="sm"
+                    className="text-book-brown border-book-brown/50 hover:border-book-brown hover:bg-book-brown/5 text-xs h-7"
                     onClick={() => setSelectedBook(book)}
                   >
-                    Contact Owner
+                    Contact
                   </Button>
                 </CardFooter>
               </Card>

@@ -14,11 +14,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, MessageCircle, Send, ArrowLeft, User } from "lucide-react";
+import { BookOpen, MessageCircle, Send, ArrowLeft, User, Check } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 const Messages = () => {
-  const { currentUser, getMessagesForUser, markMessageAsRead, sendMessage } = useBookExchange();
+  const { currentUser, getMessagesForUser, markMessageAsRead, sendMessage, acceptBookRequest } = useBookExchange();
   const navigate = useNavigate();
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
@@ -107,6 +107,10 @@ const Messages = () => {
     
     sendMessage(selectedConversation, firstMessage.bookId, replyText, false);
     setReplyText("");
+  };
+
+  const handleAcceptRequest = (messageId: string) => {
+    acceptBookRequest(messageId);
   };
 
   // Redirect if not logged in
@@ -221,10 +225,20 @@ const Messages = () => {
                             }`}
                           >
                             {message.isRequest && !isCurrentUser && (
-                              <div className="mb-1">
+                              <div className="mb-2 flex justify-between items-center">
                                 <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
                                   Book Request
                                 </Badge>
+                                
+                                {currentUser.role === "owner" && (
+                                  <Button 
+                                    size="sm" 
+                                    className="h-7 ml-2 bg-green-600 hover:bg-green-700 text-xs"
+                                    onClick={() => handleAcceptRequest(message.id)}
+                                  >
+                                    <Check className="mr-1 h-3 w-3" /> Accept
+                                  </Button>
+                                )}
                               </div>
                             )}
                             <p className="text-sm">{message.content}</p>

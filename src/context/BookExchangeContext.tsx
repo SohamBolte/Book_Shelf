@@ -47,7 +47,7 @@ interface BookExchangeContextType {
   registerUser: (user: Omit<User, "id">) => void;
   loginUser: (email: string, password: string) => boolean;
   logoutUser: () => void;
-  addBook: (book: Omit<Book, "id" | "ownerId" | "ownerName" | "available" | "createdAt">) => void;
+  addBook: (book: Omit<Book, "id" | "ownerId" | "ownerName" | "available" | "createdAt">, coverFile?: File) => void;
   toggleBookAvailability: (bookId: string) => void;
   deleteBook: (bookId: string) => void;
   filterBooksBySearch: (search: string) => Book[];
@@ -55,11 +55,12 @@ interface BookExchangeContextType {
   getMessagesForUser: () => Message[];
   markMessageAsRead: (messageId: string) => void;
   getUnreadMessagesCount: () => number;
+  acceptBookRequest: (messageId: string) => void;
+  uploadCoverImage: (file: File) => Promise<string>;
 }
 
 const BookExchangeContext = createContext<BookExchangeContextType | undefined>(undefined);
 
-// Sample initial data
 const initialUsers: User[] = [
   {
     id: "1",
@@ -79,39 +80,11 @@ const initialUsers: User[] = [
   },
 ];
 
-const initialBooks: Book[] = [
-  {
-    id: "1",
-    title: "To Kill a Mockingbird",
-    author: "Harper Lee",
-    genre: "Fiction",
-    location: "New York",
-    contact: "john@example.com",
-    ownerId: "1",
-    ownerName: "John Doe",
-    available: true,
-    coverUrl: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=387&ixlib=rb-4.0.3",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    title: "1984",
-    author: "George Orwell",
-    genre: "Dystopian",
-    location: "Boston",
-    contact: "john@example.com",
-    ownerId: "1",
-    ownerName: "John Doe",
-    available: true,
-    coverUrl: "https://images.unsplash.com/photo-1541963463532-d68292c34b19?auto=format&fit=crop&q=80&w=388&ixlib=rb-4.0.3",
-    createdAt: new Date().toISOString(),
-  },
-];
+const initialBooks: Book[] = [];
 
 const initialMessages: Message[] = [];
 
 export const BookExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Try to load data from localStorage if available
   const [users, setUsers] = useState<User[]>(() => {
     const savedUsers = localStorage.getItem("bookExchangeUsers");
     return savedUsers ? JSON.parse(savedUsers) : initialUsers;
@@ -132,7 +105,6 @@ export const BookExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return savedUser ? JSON.parse(savedUser) : null;
   });
 
-  // Save to localStorage whenever data changes
   useEffect(() => {
     localStorage.setItem("bookExchangeUsers", JSON.stringify(users));
     localStorage.setItem("bookExchangeBooks", JSON.stringify(books));
@@ -141,7 +113,6 @@ export const BookExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, [users, books, messages, currentUser]);
 
   const registerUser = (userData: Omit<User, "id">) => {
-    // Check if user with this email already exists
     if (users.some(user => user.email === userData.email)) {
       toast({
         title: "Registration failed",
@@ -153,7 +124,7 @@ export const BookExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     const newUser: User = {
       ...userData,
-      id: Date.now().toString(), // Simple ID generation
+      id: Date.now().toString(),
     };
 
     setUsers(prevUsers => [...prevUsers, newUser]);
@@ -192,7 +163,27 @@ export const BookExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ 
     });
   };
 
-  const addBook = (bookData: Omit<Book, "id" | "ownerId" | "ownerName" | "available" | "createdAt">) => {
+  const uploadCoverImage = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target && typeof event.target.result === 'string') {
+          resolve(event.target.result);
+        } else {
+          reject(new Error('Failed to convert file to data URL'));
+        }
+      };
+      reader.onerror = () => {
+        reject(new Error('Error reading file'));
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const addBook = async (
+    bookData: Omit<Book, "id" | "ownerId" | "ownerName" | "available" | "createdAt">, 
+    coverFile?: File
+  ) => {
     if (!currentUser) {
       toast({
         title: "Not authorized",
@@ -211,8 +202,23 @@ export const BookExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ 
       return;
     }
 
+    let coverUrl = bookData.coverUrl;
+
+    if (coverFile) {
+      try {
+        coverUrl = await uploadCoverImage(coverFile);
+      } catch (error) {
+        toast({
+          title: "Upload failed",
+          description: "Failed to upload cover image",
+          variant: "destructive"
+        });
+      }
+    }
+
     const newBook: Book = {
       ...bookData,
+      coverUrl,
       id: Date.now().toString(),
       ownerId: currentUser.id,
       ownerName: currentUser.name,
@@ -354,6 +360,60 @@ export const BookExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ 
     ).length;
   };
 
+  const acceptBookRequest = (messageId: string) => {
+    if (!currentUser) {
+      toast({
+        title: "Not authorized",
+        description: "You must be logged in to accept requests",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const requestMessage = messages.find(m => 
+      m.id === messageId && 
+      m.isRequest && 
+      m.receiverId === currentUser.id
+    );
+
+    if (!requestMessage) {
+      toast({
+        title: "Error",
+        description: "Request not found or cannot be accepted",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setBooks(prevBooks => 
+      prevBooks.map(book => 
+        book.id === requestMessage.bookId
+          ? { ...book, available: false }
+          : book
+      )
+    );
+
+    const acceptanceMessage: Message = {
+      id: Date.now().toString(),
+      senderId: currentUser.id,
+      senderName: currentUser.name,
+      receiverId: requestMessage.senderId,
+      bookId: requestMessage.bookId,
+      bookTitle: requestMessage.bookTitle,
+      content: `Your request for "${requestMessage.bookTitle}" has been accepted! The book will be delivered to you soon.`,
+      isRequest: false,
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    setMessages(prevMessages => [...prevMessages, acceptanceMessage]);
+    
+    toast({
+      title: "Request Accepted",
+      description: `You've accepted the request for "${requestMessage.bookTitle}"`,
+    });
+  };
+
   return (
     <BookExchangeContext.Provider
       value={{
@@ -372,6 +432,8 @@ export const BookExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ 
         getMessagesForUser,
         markMessageAsRead,
         getUnreadMessagesCount,
+        acceptBookRequest,
+        uploadCoverImage,
       }}
     >
       {children}
