@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,7 +62,12 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+				// Custom colors for our book exchange portal
+				'book-brown': '#8B4513',
+				'book-cream': '#FFF8E1',
+				'book-green': '#7D9B76',
+				'book-charcoal': '#333333'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
@@ -89,6 +95,10 @@ export default {
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out'
+			},
+			fontFamily: {
+				serif: ['Merriweather', 'serif'],
+				sans: ['Inter', 'sans-serif']
 			}
 		}
 	},
